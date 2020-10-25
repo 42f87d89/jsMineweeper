@@ -159,7 +159,6 @@ function expand(field, col, row) {
     if(spot.state == "hidden") spot.state = "open";
     let mines = around(field, col, row, (s) => {return s.mine?1:0;});
     let flags = around(field, col, row, (s) => {return s.state == "flagged"?1:0;});
-    console.log("mines " + mines + ", flags " + flags);
     if(mines == flags) {
         for(let i = -1; i <= 1; i++) {
             for(let j = -1; j <= 1; j++) {
@@ -181,9 +180,6 @@ function onClick(e, cvs, grid) {
     let col = Math.floor(x/grid.size);
     let row = Math.floor(y/grid.size);
     let spot = grid.field.spots[row][col]
-    if(grid.field.empty) {
-        grid.field = randomiseField(grid.field, 0.2, col, row);
-    }
     if(
         x%grid.size < calcPixelPos(grid, col, row, 0, 0) ||
         x%grid.size > calcPixelPos(grid, col, row, 3, 3) + grid.part) {
@@ -191,12 +187,17 @@ function onClick(e, cvs, grid) {
     }
     let logic = lLogic;
     if(e.button == 2) {
+        if(grid.field.empty) {
+            grid.field = randomiseField(grid.field, 0.2, col, row);
+        }
         logic = rLogic;
         e.preventDefault();
     }
-    let action = applyLogic(logic, spot);
-    if(action == "expand") {
-        expand(grid.field, col, row);
+    if(!grid.field.empty){
+        let action = applyLogic(logic, spot);
+        if(action == "expand") {
+            expand(grid.field, col, row);
+        }
     }
     drawField(cvs.getContext("2d"), grid)
 }
