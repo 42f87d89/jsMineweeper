@@ -1,0 +1,8 @@
+body {
+    background: #ccc;
+}
+#main {
+    width: min-content;
+    margin: auto;
+    background: #ddd;
+}
