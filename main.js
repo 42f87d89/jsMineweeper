@@ -5,22 +5,71 @@ function init() {
     document.body.appendChild(main);
     let cvs = document.createElement("canvas");
     main.appendChild(cvs);
+    
+    let UI = {
+        w: document.createElement("input"), 
+        h: document.createElement("input"), 
+        p: document.createElement("input"),
+        s: document.createElement("input"),
+        grid: undefined};
+
+    let dblClick = {value: false};
+    cvs.oncontextmenu = () => {return false;}; 
+    cvs.addEventListener("mousedown", (e) => {if(e.button == 2) {e.preventDefault();return false;}});
+    cvs.addEventListener("mouseup", (e) => {window.setTimeout(() => {onClick(e, cvs, dblClick, UI)}, 150)});
+    cvs.addEventListener("dblclick", (e) => {onDoubleClick(e, cvs, dblClick, UI)});
+
+    UI.grid = makeGrid(20, 10, 50, 1, 10, 1, 0);
+    createUI(cvs, UI, main);
+}
+
+function createUI(cvs, UI, main) {
     let ctx = cvs.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     ctx.translate(0.5, 0.5);
-    let grid = makeGrid(20, 10, 50, 1, 10, 1);
-    cvs.oncontextmenu = () => {return false;}; 
-    cvs.addEventListener("mousedown", (e) => {if(e.button == 2) {e.preventDefault();return false;}});
-    cvs.addEventListener("mouseup", (e) => {onClick(e, cvs, grid, "click")});
-    //cvs.addEventListener("dblclick", (e) => {onClick(e, cvs, grid, "click")});
-    let size = calcSize(grid);
+
+    UI.w.type = "text";
+    UI.w.name = "Width";
+    let labelWidth = document.createElement("p");
+    labelWidth.textContent = UI.w.name;
+    main.appendChild(labelWidth);
+    main.appendChild(UI.w);
+
+    UI.h.type = "text";
+    UI.h.name = "Height";
+    let labelHeight = document.createElement("p");
+    labelHeight.textContent = UI.h.name;
+    main.appendChild(labelHeight);
+    main.appendChild(UI.h);
+
+    UI.p.type = "text";
+    UI.p.name = "Probability";
+    let labelProb = document.createElement("p");
+    labelProb.textContent = UI.p.name;
+    main.appendChild(labelProb);
+    main.appendChild(UI.p);
+
+    UI.s.type = "button";
+    UI.s.value = "Start";
+    UI.s.onclick = () => {
+        console.log("hello");
+        UI.grid = makeGrid(UI.w.value, UI.h.value, 50, 1, 10, 1, UI.p.value);
+        let size = calcSize(UI.grid);
+        cvs.width = size.width;
+        cvs.height = size.height;
+        drawGrid(ctx, UI.grid);
+        drawField(ctx, UI.grid)
+    };
+    main.appendChild(UI.s);
+
+    let size = calcSize(UI.grid);
     cvs.width = size.width;
     cvs.height = size.height;
-    drawGrid(ctx, grid);
-    drawField(ctx, grid)
+    drawGrid(ctx, UI.grid);
+    drawField(ctx, UI.grid)
 }
 
-function makeGrid(width, height, size, thickness, outerPadding, innerPadding) {
+function makeGrid(width, height, size, thickness, outerPadding, innerPadding, prob) {
     return {
         width: width,
         height: height,
@@ -28,7 +77,7 @@ function makeGrid(width, height, size, thickness, outerPadding, innerPadding) {
         thickness: thickness,
         outerPadding: outerPadding,
         innerPadding: innerPadding,
-        field: makeEmptyField(width, height),
+        field: makeEmptyField(width, height, prob),
         part: Math.floor((size -
             thickness -
             2*outerPadding -
@@ -79,7 +128,7 @@ function makeSpot(mine, state) {
     return {mine: mine, state: state};
 }
 
-function makeEmptyField(width, height) {
+function makeEmptyField(width, height, prob) {
     let spots = new Array(width);
     for(let row = 0; row<height; row++) {
         spots[row] = new Array(height);
@@ -87,7 +136,7 @@ function makeEmptyField(width, height) {
             spots[row][col] = makeSpot(false, "hidden");
         }
     }
-    return {width: width, height:height, spots: spots, empty: true};
+    return {width: width, height:height, spots: spots, empty: true, probability: prob};
 }
 
 function around(field, col, row, f) {
@@ -173,7 +222,8 @@ function expand(field, col, row) {
     }
 }
 
-function onClick(e, cvs, grid) {
+function onClick(e, cvs, dblClick, UI) {
+    let grid = UI.grid;
     let r = cvs.getBoundingClientRect();
     let x = e.clientX - r.x;
     let y = e.clientY - r.y;
@@ -186,9 +236,9 @@ function onClick(e, cvs, grid) {
         return; 
     }
     let logic = lLogic;
-    if(e.button == 2) {
+    if(e.button == 2 || (e.button == 0 && dblClick.value)) {
         if(grid.field.empty) {
-            grid.field = randomiseField(grid.field, 0.2, col, row);
+            grid.field = randomiseField(grid.field, UI.grid.field.probability, col, row);
         }
         logic = rLogic;
         e.preventDefault();
@@ -202,12 +252,17 @@ function onClick(e, cvs, grid) {
     drawField(cvs.getContext("2d"), grid)
 }
 
+function onDoubleClick(e, cvs, dblClick, UI) {
+    dblClick.value = true;
+    onClick(e, cvs, dblClick, UI);
+    dblClick.value = false;
+}
+
 function randomiseField(field, density, col, row) {
     field.empty = false;
     for(let c = 0; c<field.width; c++) {
         for(let r = 0; r<field.height; r++) {
-            if(c <= col+1 && c>= col-1) continue;
-            if(r <= row+1 && r>= row-1) continue;
+            if(c <= col+1 && c>= col-1 && r <= row+1 && r>= row-1) continue;
             field.spots[r][c].mine = Math.random()<density;
         }
     }
