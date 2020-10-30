@@ -16,10 +16,9 @@ function init() {
     let dblClick = {value: false};
     cvs.oncontextmenu = () => {return false;}; 
     cvs.addEventListener("mousedown", (e) => {if(e.button == 2) {e.preventDefault();return false;}});
-    cvs.addEventListener("mouseup", (e) => {window.setTimeout(() => {onClick(e, cvs, dblClick, UI)}, 150)});
-    cvs.addEventListener("dblclick", (e) => {onDoubleClick(e, cvs, dblClick, UI)});
+    cvs.addEventListener("mouseup", (e) => {onClick(e, cvs, false, UI)});
+    cvs.addEventListener("dblclick", (e) => {onDoubleClick(e, cvs, true, UI)});
 
-    UI.grid = makeGrid(20, 10, 50, 1, 10, 1, 0);
     createUI(cvs, UI, main);
 }
 
@@ -30,6 +29,7 @@ function createUI(cvs, UI, main) {
 
     UI.w.type = "text";
     UI.w.name = "Width";
+    UI.w.value = 20;
     let labelWidth = document.createElement("p");
     labelWidth.textContent = UI.w.name;
     main.appendChild(labelWidth);
@@ -37,6 +37,7 @@ function createUI(cvs, UI, main) {
 
     UI.h.type = "text";
     UI.h.name = "Height";
+    UI.h.value = 10;
     let labelHeight = document.createElement("p");
     labelHeight.textContent = UI.h.name;
     main.appendChild(labelHeight);
@@ -44,6 +45,7 @@ function createUI(cvs, UI, main) {
 
     UI.p.type = "text";
     UI.p.name = "Probability";
+    UI.p.value = 0.2;
     let labelProb = document.createElement("p");
     labelProb.textContent = UI.p.name;
     main.appendChild(labelProb);
@@ -52,8 +54,7 @@ function createUI(cvs, UI, main) {
     UI.s.type = "button";
     UI.s.value = "Start";
     UI.s.onclick = () => {
-        console.log("hello");
-        UI.grid = makeGrid(UI.w.value, UI.h.value, 50, 1, 10, 1, UI.p.value);
+        UI.grid = makeGrid(UI.w.value, UI.h.value, 35, 1, 3, 1, UI.p.value);
         let size = calcSize(UI.grid);
         cvs.width = size.width;
         cvs.height = size.height;
@@ -61,12 +62,6 @@ function createUI(cvs, UI, main) {
         drawField(ctx, UI.grid)
     };
     main.appendChild(UI.s);
-
-    let size = calcSize(UI.grid);
-    cvs.width = size.width;
-    cvs.height = size.height;
-    drawGrid(ctx, UI.grid);
-    drawField(ctx, UI.grid)
 }
 
 function makeGrid(width, height, size, thickness, outerPadding, innerPadding, prob) {
@@ -233,10 +228,11 @@ function onClick(e, cvs, dblClick, UI) {
     if(
         x%grid.size < calcPixelPos(grid, col, row, 0, 0) ||
         x%grid.size > calcPixelPos(grid, col, row, 3, 3) + grid.part) {
+        console.log("border");
         return; 
     }
     let logic = lLogic;
-    if(e.button == 2 || (e.button == 0 && dblClick.value)) {
+    if(e.button == 2 || (e.button == 0 && dblClick)) {
         if(grid.field.empty) {
             grid.field = randomiseField(grid.field, UI.grid.field.probability, col, row);
         }
@@ -253,9 +249,7 @@ function onClick(e, cvs, dblClick, UI) {
 }
 
 function onDoubleClick(e, cvs, dblClick, UI) {
-    dblClick.value = true;
     onClick(e, cvs, dblClick, UI);
-    dblClick.value = false;
 }
 
 function randomiseField(field, density, col, row) {
