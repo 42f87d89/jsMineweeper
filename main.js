@@ -181,7 +181,7 @@ let rLogic = [
     {prev: "hidden", next: "open", action: "expand"},
     {prev: "open", next: "open", action: "expand"}];
 let lLogic = [
-    {prev: "hidden", next: "flagged", action: "expand"},
+    {prev: "hidden", next: "flagged", action: "none"},
     {prev: "flagged", next: "hidden", action: "none"},
     {prev: "open", next: "open", action: "expand"}];
 
@@ -199,19 +199,22 @@ function applyLogic(logic, spot) {
 }
 
 function expand(field, col, row) {
-    let spot = field.spots[row][col]
-    if(spot.state == "hidden") spot.state = "open";
-    let mines = around(field, col, row, (s) => {return s.mine?1:0;});
-    let flags = around(field, col, row, (s) => {return s.state == "flagged"?1:0;});
+    let s = field.spots[row][col];
+    if(s.state == "hidden") {
+        s.state = "open";
+    }
+
+    let mines = around(field, col, row, s => s.mine?1:0);
+    let flags = around(field, col, row, s => s.state == "flagged"?1:0);
+
     if(mines == flags) {
-        for(let i = -1; i <= 1; i++) {
-            for(let j = -1; j <= 1; j++) {
-                if(i == 0 && j == 0) continue;
+        for(let i of [-1,0,1]) {
+            for(let j of [-1,0,1]) {
                 try {
                     if(field.spots[row+j][col+i].state == "hidden") {
                         expand(field, col+i, row+j);
                     }
-                } catch (e) {}
+                }catch(e){}
             }
         }
     }
@@ -239,11 +242,9 @@ function onClick(e, cvs, dblClick, UI) {
         logic = rLogic;
         e.preventDefault();
     }
-    if(!grid.field.empty){
-        let action = applyLogic(logic, spot);
-        if(action == "expand") {
-            expand(grid.field, col, row);
-        }
+    let action = applyLogic(logic, spot);
+    if(action == "expand") {
+        expand(grid.field, col, row);
     }
     drawField(cvs.getContext("2d"), grid)
 }
@@ -256,7 +257,10 @@ function randomiseField(field, density, col, row) {
     field.empty = false;
     for(let c = 0; c<field.width; c++) {
         for(let r = 0; r<field.height; r++) {
-            if(c <= col+1 && c>= col-1 && r <= row+1 && r>= row-1) continue;
+            if(c <= col+1 && c>= col-1 && r <= row+1 && r>= row-1) {
+                field.spots[r][c].state = "open";
+                continue;
+            }
             field.spots[r][c].mine = Math.random()<density;
         }
     }
