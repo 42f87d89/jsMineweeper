@@ -10,6 +10,7 @@ function init() {
         w: document.createElement("input"), 
         h: document.createElement("input"), 
         p: document.createElement("input"),
+        size: document.createElement("input"),
         s: document.createElement("input"),
         grid: undefined};
 
@@ -51,10 +52,18 @@ function createUI(cvs, UI, main) {
     main.appendChild(labelProb);
     main.appendChild(UI.p);
 
+    UI.size.type = "text";
+    UI.size.name = "UI size";
+    UI.size.value = 35;
+    let labelSize = document.createElement("p");
+    labelSize.textContent = UI.size.name;
+    main.appendChild(labelSize);
+    main.appendChild(UI.size);
+
     UI.s.type = "button";
     UI.s.value = "Start";
     UI.s.onclick = () => {
-        UI.grid = makeGrid(UI.w.value, UI.h.value, 35, 1, 3, 1, UI.p.value);
+        UI.grid = makeGrid(UI.w.value, UI.h.value, UI.size.value, 1, 3, 1, UI.p.value);
         let size = calcSize(UI.grid);
         cvs.width = size.width;
         cvs.height = size.height;
