@@ -267,11 +267,11 @@ function randomiseField(field, density, col, row) {
     for(let c = 0; c<field.width; c++) {
         for(let r = 0; r<field.height; r++) {
             if(c <= col+1 && c>= col-1 && r <= row+1 && r>= row-1) {
-                field.spots[r][c].state = "open";
                 continue;
             }
             field.spots[r][c].mine = Math.random()<density;
         }
     }
+    expand(field, col, row);
     return field;
 }
