@@ -5,4 +5,5 @@ body {
     width: min-content;
     margin: auto;
     background: #ddd;
+    touch-action: manipulation;
 }
