@@ -30,7 +30,7 @@ function createUI(cvs, UI, main) {
 
     UI.w.type = "text";
     UI.w.name = "Width";
-    UI.w.value = 20;
+    UI.w.value = 40;
     let labelWidth = document.createElement("p");
     labelWidth.textContent = UI.w.name;
     main.appendChild(labelWidth);
@@ -38,7 +38,7 @@ function createUI(cvs, UI, main) {
 
     UI.h.type = "text";
     UI.h.name = "Height";
-    UI.h.value = 10;
+    UI.h.value = 20;
     let labelHeight = document.createElement("p");
     labelHeight.textContent = UI.h.name;
     main.appendChild(labelHeight);
@@ -46,7 +46,7 @@ function createUI(cvs, UI, main) {
 
     UI.p.type = "text";
     UI.p.name = "Probability";
-    UI.p.value = 0.2;
+    UI.p.value = 0.25;
     let labelProb = document.createElement("p");
     labelProb.textContent = UI.p.name;
     main.appendChild(labelProb);
@@ -54,7 +54,7 @@ function createUI(cvs, UI, main) {
 
     UI.size.type = "text";
     UI.size.name = "UI size";
-    UI.size.value = 35;
+    UI.size.value = 30;
     let labelSize = document.createElement("p");
     labelSize.textContent = UI.size.name;
     main.appendChild(labelSize);
@@ -241,7 +241,7 @@ function onClick(e, cvs, dblClick, UI) {
         x%grid.size < calcPixelPos(grid, col, row, 0, 0) ||
         x%grid.size > calcPixelPos(grid, col, row, 3, 3) + grid.part) {
         console.log("border");
-        return; 
+        return;
     }
     let logic = lLogic;
     if(e.button == 2 || (e.button == 0 && dblClick)) {
@@ -269,9 +269,40 @@ function randomiseField(field, density, col, row) {
             if(c <= col+1 && c>= col-1 && r <= row+1 && r>= row-1) {
                 continue;
             }
-            field.spots[r][c].mine = Math.random()<density;
+            field.spots[r][c].mine = Math.random() < density;
         }
     }
     expand(field, col, row);
     return field;
+}
+
+function makeSolvableField(field, p, col, row){
+    let visited = new Array(field.width);
+    for(let r = 0; r<field.height; r++) {
+        visited[r] = new Array(field.height);
+        for(let c = 0; c<field.width; c++) {
+            visited[r][c] = (r<row-1||r>row+1)&&(c<col-1||c>col+1);
+        }
+    }
+    for(let i = 5; i<Math.max(field.width, field.height); i += 2) {
+        let lowR = row - ((i-1)/2);
+        let lowC = col - ((i-1)/2);
+        let highR = row + ((i-1)/2);
+        let highC = col + ((i-1)/2);
+        for(let r = lowR; r<highR; r++){
+            for(let c = lowC; c<highC; c++){
+                if(!(r == lowR) || !(c == lowC) || !(r == highR) || !(c == highC)) continue;
+                field.spots[r][c] = Math.random() < p;
+            }
+        }
+        while(isnotsolvable) {
+            //remove some mines
+        }
+    }
+    field.empty = false;
+    return field;
+}
+
+function isReachable(result, field) {
+    
 }
