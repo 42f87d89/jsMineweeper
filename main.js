@@ -1,4 +1,7 @@
 "use strict"
+
+let UI = undefined;
+
 function init() {
     let main = document.createElement("div");
     main.id = "main"
@@ -6,12 +9,13 @@ function init() {
     let cvs = document.createElement("canvas");
     main.appendChild(cvs);
     
-    let UI = {
+    UI = {
         w: document.createElement("input"), 
         h: document.createElement("input"), 
         p: document.createElement("input"),
         size: document.createElement("input"),
         s: document.createElement("input"),
+        open: undefined,
         grid: undefined};
 
     let dblClick = {value: false};
@@ -60,10 +64,12 @@ function createUI(cvs, UI, main) {
     main.appendChild(labelSize);
     main.appendChild(UI.size);
 
+    UI.open = Array.from({length: +UI.w.value}, () => Array.from({length: +UI.h.value}, () => false));
+
     UI.s.type = "button";
     UI.s.value = "Start";
     UI.s.onclick = () => {
-        UI.grid = makeGrid(UI.w.value, UI.h.value, UI.size.value, 1, 3, 1, UI.p.value);
+        UI.grid = makeGrid(+UI.w.value, +UI.h.value, +UI.size.value, 1, 3, 1, UI.p.value);
         let size = calcSize(UI.grid);
         cvs.width = size.width;
         cvs.height = size.height;
@@ -74,7 +80,7 @@ function createUI(cvs, UI, main) {
 }
 
 function makeGrid(width, height, size, thickness, outerPadding, innerPadding, prob) {
-    return {
+    let result = {
         width: width,
         height: height,
         size: size,
@@ -87,6 +93,7 @@ function makeGrid(width, height, size, thickness, outerPadding, innerPadding, pr
             2*outerPadding -
             2*innerPadding)/3)
     }
+    return result;
 }
 
 function calcSize(grid) {
@@ -133,13 +140,7 @@ function makeSpot(mine, state) {
 }
 
 function makeEmptyField(width, height, prob) {
-    let spots = new Array(width);
-    for(let row = 0; row<height; row++) {
-        spots[row] = new Array(height);
-        for(let col = 0; col<width; col++) {
-            spots[row][col] = makeSpot(false, "hidden");
-        }
-    }
+    let spots = Array.from({length: height}, () => Array.from({length: width}, () => makeSpot(false, "hidden")));
     return {width: width, height:height, spots: spots, empty: true, probability: prob};
 }
 
@@ -156,18 +157,19 @@ function around(field, col, row, f) {
     return result;
 }
 
+function drawSquare(ctx, grid, col, row, color) {
+    ctx.fillStyle = color
+    let pos = calcPixelPos(grid, col, row, 0, 0);
+    let size = grid.size - 2*grid.innerPadding - 2*grid.outerPadding;
+    ctx.fillRect(pos.x, pos.y, size, size);
+}
+
 function drawField(ctx, grid) {
-    function drawSquare(ctx, grid, col, row, color) {
-        ctx.fillStyle = color
-        let pos = calcPixelPos(grid, col, row, 0, 0);
-        let size = grid.size - 2*grid.innerPadding - 2*grid.outerPadding;
-        ctx.fillRect(pos.x, pos.y, size, size);
-    }
     for(let col = 0; col < grid.width; col++) {
         for(let row = 0; row < grid.height; row++){
-            let s = grid.field.spots[row][col]
+            let s = grid.field.spots[row][col];
             if(s.state == "hidden") {
-                drawSquare(ctx, grid, col, row, "#aaa")
+                drawSquare(ctx, grid, col, row, "#aaa");
             } else if(s.state == "flagged") {
                 drawSquare(ctx, grid, col, row, "#a00");
             } else if(s.state == "open") {
@@ -277,13 +279,8 @@ function randomiseField(field, density, col, row) {
 }
 
 function makeSolvableField(field, p, col, row){
-    let visited = new Array(field.width);
-    for(let r = 0; r<field.height; r++) {
-        visited[r] = new Array(field.height);
-        for(let c = 0; c<field.width; c++) {
-            visited[r][c] = (r<row-1||r>row+1)&&(c<col-1||c>col+1);
-        }
-    }
+    let visited = Array.from({length: height}, (v, r) => Array.from({}, (v2, c) => (r<row-1||r>row+1)&&(c<col-1||c>col+1)));
+
     for(let i = 5; i<Math.max(field.width, field.height); i += 2) {
         let lowR = row - ((i-1)/2);
         let lowC = col - ((i-1)/2);
