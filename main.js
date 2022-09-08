@@ -27,56 +27,56 @@ function init() {
     createUI(cvs, UI, main);
 }
 
-function createUI(cvs, UI, main) {
+function createUI(cvs, ui, main) {
     let ctx = cvs.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     ctx.translate(0.5, 0.5);
 
-    UI.w.type = "text";
-    UI.w.name = "Width";
-    UI.w.value = 40;
+    ui.w.type = "text";
+    ui.w.name = "Width";
+    ui.w.value = 40;
     let labelWidth = document.createElement("p");
-    labelWidth.textContent = UI.w.name;
+    labelWidth.textContent = ui.w.name;
     main.appendChild(labelWidth);
-    main.appendChild(UI.w);
+    main.appendChild(ui.w);
 
-    UI.h.type = "text";
-    UI.h.name = "Height";
-    UI.h.value = 20;
+    ui.h.type = "text";
+    ui.h.name = "Height";
+    ui.h.value = 20;
     let labelHeight = document.createElement("p");
-    labelHeight.textContent = UI.h.name;
+    labelHeight.textContent = ui.h.name;
     main.appendChild(labelHeight);
-    main.appendChild(UI.h);
+    main.appendChild(ui.h);
 
-    UI.p.type = "text";
-    UI.p.name = "Probability";
-    UI.p.value = 0.25;
+    ui.p.type = "text";
+    ui.p.name = "Probability";
+    ui.p.value = 0.25;
     let labelProb = document.createElement("p");
-    labelProb.textContent = UI.p.name;
+    labelProb.textContent = ui.p.name;
     main.appendChild(labelProb);
-    main.appendChild(UI.p);
+    main.appendChild(ui.p);
 
-    UI.size.type = "text";
-    UI.size.name = "UI size";
-    UI.size.value = 30;
+    ui.size.type = "text";
+    ui.size.name = "UI size";
+    ui.size.value = 30;
     let labelSize = document.createElement("p");
-    labelSize.textContent = UI.size.name;
+    labelSize.textContent = ui.size.name;
     main.appendChild(labelSize);
-    main.appendChild(UI.size);
+    main.appendChild(ui.size);
 
-    UI.open = Array.from({length: +UI.w.value}, () => Array.from({length: +UI.h.value}, () => false));
+    ui.open = Array.from({length: +ui.h.value}, () => Array.from({length: +ui.w.value}, () => false));
 
-    UI.s.type = "button";
-    UI.s.value = "Start";
-    UI.s.onclick = () => {
-        UI.grid = makeGrid(+UI.w.value, +UI.h.value, +UI.size.value, 1, 3, 1, UI.p.value);
-        let size = calcSize(UI.grid);
+    ui.s.type = "button";
+    ui.s.value = "Start";
+    ui.s.onclick = () => {
+        ui.grid = makeGrid(+ui.w.value, +ui.h.value, +ui.size.value, 1, 3, 1, ui.p.value);
+        let size = calcSize(ui.grid);
         cvs.width = size.width;
         cvs.height = size.height;
-        drawGrid(ctx, UI.grid);
-        drawField(ctx, UI.grid)
+        drawGrid(ctx, ui.grid);
+        drawField(ctx, ui)
     };
-    main.appendChild(UI.s);
+    main.appendChild(ui.s);
 }
 
 function makeGrid(width, height, size, thickness, outerPadding, innerPadding, prob) {
@@ -164,15 +164,17 @@ function drawSquare(ctx, grid, col, row, color) {
     ctx.fillRect(pos.x, pos.y, size, size);
 }
 
-function drawField(ctx, grid) {
+function drawField(ctx, ui) {
+    let grid = ui.grid;
     for(let col = 0; col < grid.width; col++) {
         for(let row = 0; row < grid.height; row++){
             let s = grid.field.spots[row][col];
+            let open = ui.open[row][col];
             if(s.state == "hidden") {
                 drawSquare(ctx, grid, col, row, "#aaa");
             } else if(s.state == "flagged") {
                 drawSquare(ctx, grid, col, row, "#a00");
-            } else if(s.state == "open") {
+            } else if(s.state == "open" && open) {
                 if(s.mine) {
                     drawSquare(ctx, grid, col, row, "#000");
                 } else {
@@ -231,8 +233,8 @@ function expand(field, col, row) {
     }
 }
 
-function onClick(e, cvs, dblClick, UI) {
-    let grid = UI.grid;
+function onClick(e, cvs, dblClick, ui) {
+    let grid = ui.grid;
     let r = cvs.getBoundingClientRect();
     let x = e.clientX - r.x;
     let y = e.clientY - r.y;
@@ -242,26 +244,66 @@ function onClick(e, cvs, dblClick, UI) {
     if(
         x%grid.size < calcPixelPos(grid, col, row, 0, 0) ||
         x%grid.size > calcPixelPos(grid, col, row, 3, 3) + grid.part) {
-        console.log("border");
         return;
     }
     let logic = lLogic;
     if(e.button == 2 || (e.button == 0 && dblClick)) {
         if(grid.field.empty) {
-            grid.field = randomiseField(grid.field, UI.grid.field.probability, col, row);
+            grid.field = randomiseField(grid.field, ui.grid.field.probability, col, row);
         }
         logic = rLogic;
         e.preventDefault();
     }
     let action = applyLogic(logic, spot);
     if(action == "expand") {
+        if(!ui.open[row][col]) {
+            ui.open[row][col] = true;
+            pop(ui);
+        }
         expand(grid.field, col, row);
     }
-    drawField(cvs.getContext("2d"), grid)
+    drawField(cvs.getContext("2d"), ui)
+    cascade(cvs.getContext("2d"), ui);
 }
 
-function onDoubleClick(e, cvs, dblClick, UI) {
-    onClick(e, cvs, dblClick, UI);
+function cascade(ctx, ui) {
+    let toOpen = [];
+    for(let c = 0; c<ui.grid.field.width; c++) {
+        for(let r = 0; r<ui.grid.field.height; r++) {
+            if(!ui.open[r][c]) continue;
+            for(let i = -1; i <= 1; i++) {
+                for(let j = -1; j <= 1; j++) {
+                    if(i == 0 && j == 0) continue;
+                    try {
+                        if(ui.grid.field.spots[r + i][c + j].state == "open" && !ui.open[r + i][c + j]) {
+                            toOpen.push({x: c+j, y: r+i})
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+    }
+    toOpen.forEach(e => {ui.open[e.y][e.x] = true; pop(ui)});
+
+    let dontMatch = false;
+    for(let c = 0; c<ui.grid.field.width; c++) {
+        if(dontMatch) break;
+        for(let r = 0; r<ui.grid.field.height; r++) {
+            if((ui.grid.field.spots[r][c].state == "open") && !ui.open[r][c]) {
+                dontMatch = true;
+                break;
+            }
+        }
+    }
+
+    drawField(ctx, ui);
+    if(dontMatch) {
+        setTimeout(() => cascade(ctx, ui), 50);
+    }
+}
+
+function onDoubleClick(e, cvs, dblClick, ui) {
+    onClick(e, cvs, dblClick, ui);
 }
 
 function randomiseField(field, density, col, row) {
@@ -302,4 +344,11 @@ function makeSolvableField(field, p, col, row){
 
 function isReachable(result, field) {
     
+}
+
+function pop(ui) {
+    if(ui.mute) return;
+    var audio = new Audio('pop.flac');
+    audio.loop = false;
+    audio.play();
 }
