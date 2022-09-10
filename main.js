@@ -69,12 +69,12 @@ function createUI(cvs, ui, main) {
 
     ui.open = Array.from({length: +ui.h.value}, () => Array.from({length: +ui.w.value}, () => false));
 
-    ui.pop = getAudioFile(ui.audioCtx, "pop.flac");
 
     ui.s.type = "button";
     ui.s.value = "Start";
     ui.s.onclick = () => {
         ui.audioCtx = new AudioContext();
+        ui.pop = getAudioFile(ui.audioCtx, "pop.flac");
         ui.grid = makeGrid(+ui.w.value, +ui.h.value, +ui.size.value, 1, 3, 1, ui.p.value);
         let size = calcSize(ui.grid);
         cvs.width = size.width;
