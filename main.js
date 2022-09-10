@@ -369,7 +369,7 @@ function pop(ui) {
     const pop = new AudioBufferSourceNode(ui.audioCtx, {
         buffer: ui.pop,
     });
-    console.log(pop);
+    console.log(ui.pop);
     pop.connect(ui.audioCtx.destination);
     pop.start();
     return pop;
