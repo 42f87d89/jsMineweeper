@@ -19,6 +19,7 @@ function init() {
         audioCtx: undefined,
         pop: undefined,
         audioBuffer: undefined,
+        mute: false,
         grid: undefined};
 
     let dblClick = {value: false};
@@ -368,6 +369,7 @@ function pop(ui) {
     const pop = new AudioBufferSourceNode(ui.audioCtx, {
         buffer: ui.pop,
     });
+    console.log(pop);
     pop.connect(ui.audioCtx.destination);
     pop.start();
     return pop;
