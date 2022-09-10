@@ -356,7 +356,9 @@ function getAudioFile(audioCtx, filepath) {
     const response = fetch(filepath);
     let arrayBuffer = undefined;
     response.then(r => arrayBuffer = r.arrayBuffer());
-    const audioBuffer = audioCtx.decodeAudioData(arrayBuffer);
+
+    let audioBuffer = undefined;
+    arrayBuffer.then(r => audioBuffer = audioCtx.decodeAudioData(arrayBuffer));
     return audioBuffer;
 }
 
@@ -368,5 +370,5 @@ function pop(ui) {
     });
     pop.connect(ui.audioCtx.destination);
     pop.start();
-    return sampleSource;
+    return pop;
 }
