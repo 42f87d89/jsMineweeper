@@ -355,7 +355,7 @@ function isReachable(result, field) {
 function getAudioFile(audioCtx, filepath) {
     const response = fetch(filepath);
     let arrayBuffer = undefined;
-    response.then(r => arrayBuffer = r.arrayBuffer());
+    response.then(r => {console.log(r);arrayBuffer = r.arrayBuffer()});
 
     let audioBuffer = undefined;
     arrayBuffer.then(r => audioBuffer = audioCtx.decodeAudioData(arrayBuffer));
