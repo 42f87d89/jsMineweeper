@@ -351,14 +351,10 @@ function makeSolvableField(field, p, col, row){
 function isReachable(result, field) {
     
 }
-
-function getAudioFile(audioCtx, filepath) {
-    const response = fetch(filepath);
-    let arrayBuffer = undefined;
-    response.then(r => arrayBuffer = r.arrayBuffer());
-    console.log(arrayBuffer);
-    let audioBuffer = undefined;
-    arrayBuffer.then(r => audioBuffer = audioCtx.decodeAudioData(arrayBuffer));
+async function getAudioFile(audioContext, filepath) {
+    const response = await fetch(filepath);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     return audioBuffer;
 }
 
