@@ -16,6 +16,9 @@ function init() {
         size: document.createElement("input"),
         s: document.createElement("input"),
         open: undefined,
+        audioCtx: undefined,
+        pop: undefined,
+        audioBuffer: undefined,
         grid: undefined};
 
     let dblClick = {value: false};
@@ -66,9 +69,12 @@ function createUI(cvs, ui, main) {
 
     ui.open = Array.from({length: +ui.h.value}, () => Array.from({length: +ui.w.value}, () => false));
 
+    ui.pop = getAudioFile(ui.audioCtx, "pop.flac");
+
     ui.s.type = "button";
     ui.s.value = "Start";
     ui.s.onclick = () => {
+        ui.audioCtx = new AudioContext();
         ui.grid = makeGrid(+ui.w.value, +ui.h.value, +ui.size.value, 1, 3, 1, ui.p.value);
         let size = calcSize(ui.grid);
         cvs.width = size.width;
@@ -346,9 +352,21 @@ function isReachable(result, field) {
     
 }
 
+function getAudioFile(audioCtx, filepath) {
+    const response = fetch(filepath);
+    console.log(response);
+    const arrayBuffer = response.arrayBuffer();
+    const audioBuffer = audioCtx.decodeAudioData(arrayBuffer);
+    return audioBuffer;
+}
+
 function pop(ui) {
     if(ui.mute) return;
-    var audio = new Audio('pop.flac');
-    audio.loop = false;
-    audio.play();
+    
+    const pop = new AudioBufferSourceNode(ui.audioCtx, {
+        buffer: ui.pop,
+    });
+    pop.connect(ui.audioCtx.destination);
+    pop.start();
+    return sampleSource;
 }
