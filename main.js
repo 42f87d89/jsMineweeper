@@ -77,7 +77,7 @@ function createUI(cvs, ui, main) {
         if(!ui.audioCtx) {
             ui.audioCtx = new AudioContext();
             let temp = getAudioFile(ui.audioCtx, "pop.flac");
-            console.log(temp);
+            console.log(temp.AudioBuffer);
             ui.pop = temp.AudioBuffer;
         }
         ui.grid = makeGrid(+ui.w.value, +ui.h.value, +ui.size.value, 1, 3, 1, ui.p.value);
@@ -369,7 +369,6 @@ function pop(ui) {
     const pop = new AudioBufferSourceNode(ui.audioCtx, {
         buffer: ui.pop,
     });
-    console.log(ui.pop);
     pop.connect(ui.audioCtx.destination);
     pop.start();
     return pop;
