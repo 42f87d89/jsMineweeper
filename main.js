@@ -68,9 +68,6 @@ function createUI(cvs, ui, main) {
     main.appendChild(labelSize);
     main.appendChild(ui.size);
 
-    ui.open = Array.from({length: +ui.h.value}, () => Array.from({length: +ui.w.value}, () => false));
-
-
     ui.s.type = "button";
     ui.s.value = "Start";
     ui.s.onclick = () => {
@@ -89,6 +86,7 @@ function createUI(cvs, ui, main) {
             });
         }
         ui.grid = makeGrid(+ui.w.value, +ui.h.value, +ui.size.value, 1, 3, 1, ui.p.value);
+        ui.open = Array.from({length: +ui.h.value}, () => Array.from({length: +ui.w.value}, () => false));
         let size = calcSize(ui.grid);
         cvs.width = size.width;
         cvs.height = size.height;
