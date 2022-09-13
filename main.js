@@ -77,8 +77,16 @@ function createUI(cvs, ui, main) {
         if(!ui.audioCtx) {
             ui.audioCtx = new AudioContext();
             let temp = getAudioFile(ui.audioCtx, "pop.flac");
-            console.log(temp.value);
-            temp.then(r => ui.pop = r);
+            temp.then(r => {
+                ui.pop = r;
+                for (let channel = 0; channel < ui.pop.numberOfChannels; channel += 1) {
+                    const channelData = ui.pop.getChannelData(channel);
+
+                    for (let sample = 0; sample < channelData.length; sample += 1) {
+                        channelData[sample] *= 0.1;
+                    }
+                }
+            });
         }
         ui.grid = makeGrid(+ui.w.value, +ui.h.value, +ui.size.value, 1, 3, 1, ui.p.value);
         let size = calcSize(ui.grid);
@@ -269,15 +277,15 @@ function onClick(e, cvs, dblClick, ui) {
     if(action == "expand") {
         if(!ui.open[row][col]) {
             ui.open[row][col] = true;
-            pop(ui);
+            pop(ui, 0.0);
         }
         expand(grid.field, col, row);
     }
     drawField(cvs.getContext("2d"), ui)
-    cascade(cvs.getContext("2d"), ui);
+    cascade(cvs.getContext("2d"), ui, 0.0);
 }
 
-function cascade(ctx, ui) {
+function cascade(ctx, ui, pitch) {
     let toOpen = [];
     for(let c = 0; c<ui.grid.field.width; c++) {
         for(let r = 0; r<ui.grid.field.height; r++) {
@@ -294,7 +302,7 @@ function cascade(ctx, ui) {
             }
         }
     }
-    toOpen.forEach(e => {ui.open[e.y][e.x] = true; pop(ui)});
+    toOpen.forEach(e => {ui.open[e.y][e.x] = true; pop(ui, 100*Math.pow(2,pitch))});
 
     let dontMatch = false;
     for(let c = 0; c<ui.grid.field.width; c++) {
@@ -309,7 +317,7 @@ function cascade(ctx, ui) {
 
     drawField(ctx, ui);
     if(dontMatch) {
-        setTimeout(() => cascade(ctx, ui), 50);
+        setTimeout(() => cascade(ctx, ui, pitch+1), 50);
     }
 }
 
@@ -363,13 +371,14 @@ async function getAudioFile(audioContext, filepath) {
     return audioBuffer;
 }
 
-function pop(ui) {
+function pop(ui, pitch) {
     if(ui.mute) return;
     
     const pop = new AudioBufferSourceNode(ui.audioCtx, {
         buffer: ui.pop,
     });
     pop.connect(ui.audioCtx.destination);
+    pop.detune.value = pitch;
     pop.start();
     return pop;
 }
