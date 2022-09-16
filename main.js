@@ -80,7 +80,7 @@ function createUI(cvs, ui, main) {
                     const channelData = ui.pop.getChannelData(channel);
 
                     for (let sample = 0; sample < channelData.length; sample += 1) {
-                        channelData[sample] *= 0.1;
+                        channelData[sample] *= 0.3;
                     }
                 }
             });
@@ -300,7 +300,8 @@ function cascade(ctx, ui, pitch) {
             }
         }
     }
-    toOpen.forEach(e => {ui.open[e.y][e.x] = true; pop(ui, 100*Math.pow(2,pitch))});
+    toOpen.forEach(e => ui.open[e.y][e.x] = true);
+    if(toOpen.length > 0) pop(ui, 100*Math.pow(2,pitch));
 
     let dontMatch = false;
     for(let c = 0; c<ui.grid.field.width; c++) {
