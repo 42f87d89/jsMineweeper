@@ -4,7 +4,7 @@ let UI = undefined;
 
 function init() {
     let main = document.createElement("div");
-    main.id = "main"
+    main.id = "main";
     document.body.appendChild(main);
     let cvs = document.createElement("canvas");
     main.appendChild(cvs);
@@ -163,12 +163,12 @@ function makeEmptyField(width, height, prob) {
 
 function around(field, col, row, f) {
     let result = 0;
-    for(let i = -1; i <= 1; i++) {
-        for(let j = -1; j <= 1; j++) {
+    for(let i of [-1,0,1]) {
+        for(let j of [-1,0,1]) {
             if(i == 0 && j == 0) continue;
-            try {
-                result += f(field.spots[row + i][col + j]);
-            } catch (e) {}
+            if(col+j < 0 || col+j > field.width-1) continue;
+            if(row+i < 0 || row+i > field.height-1) continue;
+            result += f(field, col + j, row + i);
         }
     }
     return result;
@@ -196,7 +196,7 @@ function drawField(ctx, ui) {
                     drawSquare(ctx, grid, col, row, "#000");
                 } else {
                     drawSquare(ctx, grid, col, row, "#ddd");
-                    let c = around(grid.field, col, row, (s) => {return s.mine?1:0});
+                    let c = around(grid.field, col, row, (f, c, r) => {return f.spots[r][c].mine?1:0});
                     if(c == 0) {
                     } else {
                         drawNumber(ctx, grid, col, row, c);
@@ -234,19 +234,15 @@ function expand(field, col, row) {
         s.state = "open";
     }
 
-    let mines = around(field, col, row, s => s.mine?1:0);
-    let flags = around(field, col, row, s => s.state == "flagged"?1:0);
+    let mines = around(field, col, row, (f, c, r) => {return f.spots[r][c].mine?1:0});
+    let flags = around(field, col, row, (f, c, r) => {return f.spots[r][c].state == "flagged"?1:0});
 
     if(mines == flags) {
-        for(let i of [-1,0,1]) {
-            for(let j of [-1,0,1]) {
-                try {
-                    if(field.spots[row+j][col+i].state == "hidden") {
-                        expand(field, col+i, row+j);
-                    }
-                }catch(e){}
+        around(field, col, row, (f, c, r) => {
+            if(f.spots[r][c].state == "hidden") {
+                expand(f, c, r);
             }
-        }
+        })
     }
 }
 
@@ -285,19 +281,14 @@ function onClick(e, cvs, dblClick, ui) {
 
 function cascade(ctx, ui, pitch) {
     let toOpen = [];
-    for(let c = 0; c<ui.grid.field.width; c++) {
-        for(let r = 0; r<ui.grid.field.height; r++) {
-            if(!ui.open[r][c]) continue;
-            for(let i = -1; i <= 1; i++) {
-                for(let j = -1; j <= 1; j++) {
-                    if(i == 0 && j == 0) continue;
-                    try {
-                        if(ui.grid.field.spots[r + i][c + j].state == "open" && !ui.open[r + i][c + j]) {
-                            toOpen.push({x: c+j, y: r+i})
-                        }
-                    } catch (e) {}
+    for(let col = 0; col<ui.grid.field.width; col++) {
+        for(let row = 0; row<ui.grid.field.height; row++) {
+            if(!ui.open[row][col]) continue;
+            around(ui.grid.field, col, row, (f, c, r) => {
+                if(f.spots[r][c].state == "open" && !ui.open[r][c]) {
+                    toOpen.push({x: c, y: r})
                 }
-            }
+            })
         }
     }
     toOpen.forEach(e => ui.open[e.y][e.x] = true);
