@@ -63,6 +63,7 @@ function sort(m) {
     });
 }
 
+<<<<<<< HEAD
 /** @returns {{min: number, max: number}}
  *  @param {Matrix} matrix 
  * */
@@ -129,6 +130,7 @@ function getPointValues(matrix) {
         }
     }
 }
+
 /**
  *  @param {number[][]} m 
  * */
@@ -149,8 +151,8 @@ function rowReduce(m) {
         }
         sort(m);
     }
-    //console.log("forward pass");
-    //for (let r of m) { console.log(r); }
+    console.log("forward pass");
+    for (let r of m) { console.log(r); }
     for (let i = m.length - 1; i >= 0; i--) {
         let hi = m[i].findIndex((x) => { return x != 0 });
         if (hi == -1) {
@@ -162,6 +164,6 @@ function rowReduce(m) {
             m[j] = sub(mul(above, m[i]), m[j]);
         }
     }
-    //console.log("backward pass");
-    //for (let r of m) { console.log(r); }
+    console.log("backward pass");
+    for (let r of m) { console.log(r); }
 }
