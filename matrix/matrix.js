@@ -63,6 +63,72 @@ function sort(m) {
     });
 }
 
+/** @returns {{min: number, max: number}}
+ *  @param {Matrix} matrix 
+ * */
+function getMinMax(matrix, n) {
+    let line = matrix.matrix[n];
+    let minmax = { min: 0, max: 0 };
+    for (let i = 0; i < line.length - 1; i++) {
+        let coef = line[i]
+        let value = matrix.points[i].value;
+        if (coef == 1 && value != 0) {
+            minmax.max++;
+        }
+        else if (coef == 1 && value == 1) {
+            minmax.min++;
+        }
+        else if (coef == -1 && value == 1) {
+            minmax.max--;
+        }
+        else if (coef == -1 && value != 0) {
+            minmax.min--;
+        }
+    }
+    return minmax;
+}
+
+/**
+ *  @param {Matrix} matrix 
+ * */
+function getPointValues(matrix) {
+    let n = 1;
+    while (n > 0) {
+        n = 0;
+        for (let i = 0; i < matrix.matrix.length; i++) {
+            let l = matrix.matrix[i];
+            let minmax = getMinMax(matrix, i);
+            if (l[l.length - 1] == minmax.min) {
+                for (let j = 0; j < l.length - 1; j++) {
+                    let point = matrix.points[j];
+                    if (point.value != -1) continue;
+                    if (l[j] == 1) {
+                        point.value = 0;
+                        n++;
+                    }
+                    else if (l[j] == -1) {
+                        point.value = 1;
+                        n++;
+                    }
+                }
+            }
+            else if (l[l.length - 1] == minmax.max) {
+                for (let j = 0; j < l.length - 1; j++) {
+                    let point = matrix.points[j];
+                    if (point.value != -1) continue;
+                    if (l[j] == 1) {
+                        point.value = 1;
+                        n++;
+                    }
+                    else if (l[j] == -1) {
+                        point.value = 0;
+                        n++;
+                    }
+                }
+            }
+        }
+    }
+}
 /**
  *  @param {number[][]} m 
  * */
@@ -83,8 +149,8 @@ function rowReduce(m) {
         }
         sort(m);
     }
-    console.log("forward pass");
-    for (let r of m) { console.log(r); }
+    //console.log("forward pass");
+    //for (let r of m) { console.log(r); }
     for (let i = m.length - 1; i >= 0; i--) {
         let hi = m[i].findIndex((x) => { return x != 0 });
         if (hi == -1) {
@@ -96,6 +162,6 @@ function rowReduce(m) {
             m[j] = sub(mul(above, m[i]), m[j]);
         }
     }
-    console.log("backward pass");
-    for (let r of m) { console.log(r); }
+    //console.log("backward pass");
+    //for (let r of m) { console.log(r); }
 }

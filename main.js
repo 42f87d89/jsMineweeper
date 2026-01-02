@@ -1,18 +1,23 @@
-"use strict"
+"use strict";
 
 /** @typedef UI
- *  @property {HTMLInputElement} w
- *  @property {HTMLInputElement} h
- *  @property {HTMLInputElement} p
+ *  @property {HTMLInputElement} width
+ *  @property {HTMLInputElement} height
+ *  @property {HTMLInputElement} probability
  *  @property {HTMLInputElement} size
- *  @property {HTMLInputElement} s
+ *  @property {HTMLInputElement} start
  *  @property {boolean[][]} open
+ *  @property {CanvasRenderingContext2D} ctx
  *  @property {AudioContext} audioCtx
  *  @property {AudioBuffer} pop
  *  @property {boolean} mute
- *  @property {} grid
+ *  @property {Grid} grid
+ * */
+
+/** @type {UI}
  * */
 let UI = undefined;
+let debug = true;
 
 window.onload = init;
 function init() {
@@ -23,12 +28,13 @@ function init() {
     main.appendChild(cvs);
 
     UI = {
-        w: document.createElement("input"),
-        h: document.createElement("input"),
-        p: document.createElement("input"),
+        width: document.createElement("input"),
+        height: document.createElement("input"),
+        probability: document.createElement("input"),
         size: document.createElement("input"),
-        s: document.createElement("input"),
+        start: document.createElement("input"),
         open: undefined,
+        ctx: cvs.getContext("2d"),
         audioCtx: undefined,
         pop: undefined,
         mute: false,
@@ -50,33 +56,32 @@ function init() {
  *  @param {HTMLDivElement} main 
  * */
 function createUI(cvs, ui, main) {
-    let ctx = cvs.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    ctx.translate(0.5, 0.5);
+    ui.ctx.imageSmoothingEnabled = false;
+    ui.ctx.translate(0.5, 0.5);
 
-    ui.w.type = "text";
-    ui.w.name = "Width";
-    ui.w.value = 40;
+    ui.width.type = "text";
+    ui.width.name = "Width";
+    ui.width.value = 40;
     let labelWidth = document.createElement("p");
-    labelWidth.textContent = ui.w.name;
+    labelWidth.textContent = ui.width.name;
     main.appendChild(labelWidth);
-    main.appendChild(ui.w);
+    main.appendChild(ui.width);
 
-    ui.h.type = "text";
-    ui.h.name = "Height";
-    ui.h.value = 20;
+    ui.height.type = "text";
+    ui.height.name = "Height";
+    ui.height.value = 20;
     let labelHeight = document.createElement("p");
-    labelHeight.textContent = ui.h.name;
+    labelHeight.textContent = ui.height.name;
     main.appendChild(labelHeight);
-    main.appendChild(ui.h);
+    main.appendChild(ui.height);
 
-    ui.p.type = "text";
-    ui.p.name = "Probability";
-    ui.p.value = 0.2;
+    ui.probability.type = "text";
+    ui.probability.name = "Probability";
+    ui.probability.value = 0.2;
     let labelProb = document.createElement("p");
-    labelProb.textContent = ui.p.name;
+    labelProb.textContent = ui.probability.name;
     main.appendChild(labelProb);
-    main.appendChild(ui.p);
+    main.appendChild(ui.probability);
 
     ui.size.type = "text";
     ui.size.name = "UI size";
@@ -86,9 +91,9 @@ function createUI(cvs, ui, main) {
     main.appendChild(labelSize);
     main.appendChild(ui.size);
 
-    ui.s.type = "button";
-    ui.s.value = "Start";
-    ui.s.onclick = () => {
+    ui.start.type = "button";
+    ui.start.value = "Start";
+    ui.start.onclick = () => {
         if (!ui.audioCtx) {
             ui.audioCtx = new AudioContext();
             let temp = getAudioFile(ui.audioCtx, "pop.flac");
@@ -103,15 +108,21 @@ function createUI(cvs, ui, main) {
                 }
             });
         }
-        ui.grid = makeGrid(+ui.w.value, +ui.h.value, +ui.size.value, 1, 3, 1, ui.p.value);
-        ui.open = Array.from({ length: +ui.h.value }, () => Array.from({ length: +ui.w.value }, () => false));
+        ui.grid = makeGrid(+ui.width.value, +ui.height.value, +ui.size.value, 1, 3, 1, ui.probability.value);
         let size = calcSize(ui.grid);
         cvs.width = size.width;
         cvs.height = size.height;
-        drawGrid(ctx, ui.grid);
-        drawField(ctx, ui)
+        if (!debug) {
+            ui.open = Array.from({ length: +ui.height.value }, () => Array.from({ length: +ui.width.value }, () => false));
+        } else {
+            ui.open = Array.from({ length: +ui.height.value }, () => Array.from({ length: +ui.width.value }, () => true));
+            makeSolvableField(ui.grid.field, 0.2, 10, 10);
+            ui.grid.field.empty = false;
+        }
+        drawGrid(ui.ctx, ui.grid);
+        drawField(ui)
     };
-    main.appendChild(ui.s);
+    main.appendChild(ui.start);
 }
 
 /** @typedef Grid
@@ -148,8 +159,6 @@ function makeGrid(width, height, size, thickness, outerPadding, innerPadding, pr
             2 * outerPadding -
             2 * innerPadding) / 3)
     }
-    //result.field.empty = false;
-    //makeSolvableField(result.field, 0.2, 20, 10);
     return result;
 }
 
@@ -186,6 +195,7 @@ function calcPixelPos(grid, col, row, partX, partY) {
  * */
 function drawGrid(ctx, grid) {
     let dim = calcSize(grid);
+    ctx.fillStyle = "#000";
     for (let i = 0; i <= grid.width; i++) {
         ctx.fillRect(i * grid.size, 0, grid.thickness, dim.height);
     }
@@ -236,6 +246,7 @@ function makeSpot(mine, state) {
  *  @property {number} height
  *  @property {number} probability
  *  @property {Spot[][]} spots
+ *  @property {Point[]} border
  *  @property {boolean} empty
  * */
 
@@ -246,7 +257,7 @@ function makeSpot(mine, state) {
  * */
 function makeEmptyField(width, height, prob) {
     let spots = Array.from({ length: height }, () => Array.from({ length: width }, () => makeSpot(false, "hidden")));
-    return { width: width, height: height, spots: spots, empty: true, probability: prob };
+    return { width: width, height: height, spots: spots, border: [], empty: true, probability: prob };
 }
 
 /** @returns {number}
@@ -276,39 +287,43 @@ function around(field, col, row, f) {
  *  @param {string} color 
  * */
 function drawSquare(ctx, grid, col, row, color) {
-    ctx.fillStyle = color
+    ctx.fillStyle = color;
     let pos = calcPixelPos(grid, col, row, 0, 0);
     let size = grid.size - 2 * grid.innerPadding - 2 * grid.outerPadding;
     ctx.fillRect(pos.x, pos.y, size, size);
 }
 
 /**
- *  @param {CanvasRenderingContext2D} ctx 
  *  @param {UI} ui 
  * */
-function drawField(ctx, ui) {
+function drawField(ui) {
     let grid = ui.grid;
     for (let col = 0; col < grid.width; col++) {
         for (let row = 0; row < grid.height; row++) {
             let s = grid.field.spots[row][col];
             let open = ui.open[row][col];
             if (s.state == "hidden") {
-                drawSquare(ctx, grid, col, row, "#aaa");
+                drawSquare(ui.ctx, grid, col, row, "#aaa");
             } else if (s.state == "flagged") {
-                drawSquare(ctx, grid, col, row, "#a00");
+                drawSquare(ui.ctx, grid, col, row, "#a00");
             } else if (s.state == "open" && open) {
                 if (s.mine) {
-                    drawSquare(ctx, grid, col, row, "#000");
+                    drawSquare(ui.ctx, grid, col, row, "#000");
                 } else {
-                    drawSquare(ctx, grid, col, row, "#ddd");
+                    drawSquare(ui.ctx, grid, col, row, "#ddd");
                     let c = around(grid.field, col, row, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0 });
                     if (c == 0) {
                     } else {
-                        drawNumber(ctx, grid, col, row, c);
+                        drawNumber(ui.ctx, grid, col, row, c);
                     }
                 }
             }
         }
+    }
+    if (!debug) return;
+    for (let p of grid.field.border) {
+        if (p == null) continue;
+        drawSquare(UI.ctx, UI.grid, p.x, p.y, "rgba(0,255,0,0.5)");
     }
 }
 
@@ -418,8 +433,8 @@ function onClick(e, cvs, dblClick, ui) {
         }
         expand(grid.field, col, row);
     }
-    drawField(cvs.getContext("2d"), ui)
-    cascade(cvs.getContext("2d"), ui, 0.0);
+    drawField(ui)
+    cascade(ui, 0.0);
 }
 
 /**
@@ -427,7 +442,7 @@ function onClick(e, cvs, dblClick, ui) {
  *  @param {CanvasRenderingContext2D} ctx 
  *  @param {number} pitch 
  * */
-function cascade(ctx, ui, pitch) {
+function cascade(ui, pitch) {
     let toOpen = [];
     for (let col = 0; col < ui.grid.field.width; col++) {
         for (let row = 0; row < ui.grid.field.height; row++) {
@@ -453,9 +468,9 @@ function cascade(ctx, ui, pitch) {
         }
     }
 
-    drawField(ctx, ui);
+    drawField(ui);
     if (dontMatch) {
-        setTimeout(() => cascade(ctx, ui, Math.min(pitch + 1, 7)), 50);
+        setTimeout(() => cascade(ui, Math.min(pitch + 1, 7)), 50);
     }
 }
 
@@ -482,69 +497,164 @@ function randomiseField(field, density, col, row) {
             if (c <= col + 1 && c >= col - 1 && r <= row + 1 && r >= row - 1) {
                 continue;
             }
-            field.spots[r][c].mine = Math.random() < density;
+            field.spots[r][c].mine = rand() < density;
         }
     }
     return field;
 }
 
-/** @typedef {{x: number, y: number, generated: boolean}[]} Border
+/** @typedef {{x: number, y: number, value: number, generated: boolean}} Point
+ * */
+
+/** @typedef {Point[]} Border
  * */
 
 /** @returns {number}
  *  @param {Border} border 
  * */
 function addToBorder(border, x, y) {
-    if (border.find((v) => { return v.x == x && v.y == y; }) === undefined) {
-        border.push({ x: x, y: y, generated: false });
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-/** @returns {Border}
- *  @param {Field} field 
- * */
-function getBorder(field) {
-    let border = [];
-    for (let col = 0; col < field.width; col++) {
-        for (let row = 0; row < field.height; row++) {
-            let n = around(field, col, row, (f, c, r) => {
-                if (f.spots[r][c].state == "open") return 1;
-                else return 0;
-            });
-            if (n > 0 && field.spots[row][col].state == "hidden") addToBorder(border, col, row);
-        }
-    }
-    return border;
+    if (border.findIndex((v) => { if (v == null) return false; return v.x == x && v.y == y; }) != -1) return 0;
+    let i = border.findIndex((v) => { return v == null });
+    if (i == -1) border.push({ x: x, y: y, value: -1, generated: false });
+    else border[i] = { x: x, y: y, value: -1, generated: false };
+    return 1;
 }
 
 /**
  *  @param {Field} field 
- *  @param {Border} border 
  * */
-function updateBorder(field, border) {
+function getInitialBorder(field) {
+    /** @type {Point[]} */
+    let border = [];
+    function findSmallest(field) {
+        let x = 0;
+        let y = 0;
+        while (!(around(field, x, y, (f, c, r) => { return f.spots[r][c].state == "hidden" ? 1 : 0; }) > 0
+            && around(field, x, y, (f, c, r) => { return f.spots[r][c].state == "open" ? 1 : 0; }) > 0)) {
+            y--;
+            x++;
+            if (y < 0) {
+                y = x + 1;
+                x = 0;
+            }
+        }
+        return { x: x, y: y };
+    }
+    let smallest = findSmallest(field);
+    let x = smallest.x;
+    let y = smallest.y;
+    border.push({ x: x, y: y, value: -1, generated: false });
+    let dir = { x: 1, y: 0 };
+    function nextDir(dir) {
+        let nextDir;
+        if (dir.x != 0) nextDir = { x: 0, y: dir.x };
+        else if (dir.y != 0) nextDir = { x: -dir.y, y: 0 };
+        return nextDir;
+    }
+    while (true) {
+        let next = nextDir(dir);
+        if (field.spots[y + next.y][x + next.x].state == "hidden" && border.length > 1) {
+            dir = next;
+        }
+        x += dir.x;
+        y += dir.y;
+        if (border.find((p) => { return p.x == x && p.y == y }) != undefined) break;
+        border.push({ x: x, y: y, value: -1, generated: false });
+    }
+    field.border = border;
+}
+
+/**
+ *  @param {Field} field 
+ * */
+function updateBorder(field) {
     let changes = 0;
-    for (let s of border) {
-        if (field.spots[s.y][s.x].state == "open") {
-            changes += around(field, s.x, s.y, (f, c, r) => {
-                if (f.spots[r][c].state == "hidden") return addToBorder(border, c, r);
+    let newBorder = [];
+    let i = -1;
+    let p = field.border[field.border.length - 1];
+    let prevState = field.spots[p.y][p.x].state;
+    for (let j = 0; j < field.border.length; j++) {
+        let x = field.border[j].x;
+        if (!(x == 0 && x == field.spots[0].length - 1)) continue;
+        let y = field.border[j].y;
+        if (!(y == 0 && y == field.spots.length - 1)) continue;
+        if (newBorder.findIndex((e) => { return e.x == x && e.y == y }) != -1) continue;
+        let state = field.spots[y][x].state;
+        if (state == "hidden" && prevState != "hidden") {
+            i = j;
+            continue;
+        }
+        prevState = state;
+    }
+    if (i == -1) {
+
+    }
+    for (; i < field.border.length; i++) {
+        let p = field.border[i];
+        if (field.spots[p.y][p.x].state == "hidden") {
+            newBorder.push(p);
+            continue;
+        }
+        let toAdd = [];
+        around(field, p.x, p.y, (f, c, r) => {
+            if (f.spots[r][c].state == "hidden") toAdd.push({ x: c, y: r, value: -1, generated: false });
+        });
+        let prev = p;
+        for (let j = 0; j < toAdd.length; j++) {
+            let next = toAdd.findIndex((x) => {
+                if (x == null) return false;
+                return Math.abs(prev.x - x.x) + Math.abs(prev.y - x.y) == 1;
+            });
+            if (next == -1) {
+                console.log("updateBorder couldn't find next");
+                break;
+            }
+            if (newBorder.find((x) => { return x.x == toAdd[next].x && x.y == toAdd[next].y; }) == undefined) {
+                newBorder.push(toAdd[next]);
+                changes++;
+            }
+            prev = toAdd[next];
+            toAdd[next] = null;
+        }
+        /*if (field.spots[p.y][p.x].state != "hidden") {
+            field.border[i] = null;
+            changes++;
+        }
+        if (field.spots[p.y][p.x].state == "open") {
+            changes += around(field, p.x, p.y, (f, c, r) => {
+                if (f.spots[r][c].state == "hidden") return addToBorder(f.border, c, r);
                 else return 0;
             });
-        }
+        }*/
     }
+    //sortBorder(field);
+    field.border = newBorder;
     return changes;
+}
+
+/**
+ *  @param {Field} field 
+ * */
+function sortBorder(field) {
+
+}
+
+/** @returns {number}
+ *  @param {Border} border 
+ * */
+function getBorderLength(border) {
+    return border.filter((e) => { return e != null }).length;
 }
 
 /** @returns {Border}
  *  @param {Field} field 
  *  @param {Border} border 
  * */
-function innerBorder(field, border) {
+function innerBorder(field) {
     let inner = [];
-    for (let s of border) {
-        around(field, s.x, s.y, (f, c, r) => {
+    for (let p of field.border) {
+        if (p == null) continue;
+        around(field, p.x, p.y, (f, c, r) => {
             if (f.spots[r][c].state == "open")
                 addToBorder(inner, c, r);
         });
@@ -552,16 +662,182 @@ function innerBorder(field, border) {
     return inner;
 }
 
-/** @returns {Border}
- *  @param {Field} field 
- *  @param {Border} border 
+/** @typedef {{points: Point[], matrix: number[][]}} Matrix
  * */
-function solveOnce(field, border) {
+
+/**
+ *  @param {Matrix} matrix 
+ *  @param {Number} x 
+ *  @param {Number} y 
+ * */
+function printPoint(matrix, x, y) {
+    let i = matrix.points.findIndex((e) => { return e.x == x && e.y == y; });
+    console.log(`index: ${i}`);
+    for (let l of matrix.matrix) {
+        if (l[i] != 0) {
+            let result = "";
+            for (let p of l) {
+                let s = p.toString()
+                if (s.length == 1) result += " ";
+                result += s;
+                result += ",";
+            }
+            console.log(result);
+        }
+    }
+}
+
+/**
+ *  @param {Matrix} matrix 
+ * */
+function printMatrix(matrix) {
+    for (let l of matrix.matrix) {
+        let result = "";
+        for (let p of l) {
+            let s = p.toString()
+            if (s.length == 1) result += " ";
+            result += s;
+            result += ",";
+        }
+        console.log(result.slice(0, result.length - 1));
+    }
+}
+
+/** @returns {number}
+ *  @param {Field} field 
+ * */
+function matrixSolve(field) {
+    /** @returns {{min: number, max: number}}
+     *  @param {Matrix} matrix 
+     * */
+    function getMinMax(matrix, n) {
+        let line = matrix.matrix[n];
+        let minmax = { min: 0, max: 0 };
+        for (let i = 0; i < line.length - 1; i++) {
+            let coef = line[i]
+            let value = matrix.points[i].value;
+            if (coef == 1 && value != 0) {
+                minmax.max++;
+            }
+            else if (coef == 1 && value == 1) {
+                minmax.min++;
+            }
+            else if (coef == -1 && value == 1) {
+                minmax.max--;
+            }
+            else if (coef == -1 && value != 0) {
+                minmax.min--;
+            }
+        }
+        return minmax;
+    }
+
+    /**
+     *  @param {Matrix} matrix 
+     * */
+    function getPointValues(matrix) {
+        let n = 1;
+        while (n > 0) {
+            n = 0;
+            for (let i = 0; i < matrix.matrix.length; i++) {
+                let l = matrix.matrix[i];
+                let minmax = getMinMax(matrix, i);
+                if (l[l.length - 1] == minmax.min) {
+                    for (let j = 0; j < l.length - 1; j++) {
+                        let point = matrix.points[j];
+                        if (point.value != -1) continue;
+                        if (l[j] == 1) {
+                            point.value = 0;
+                            n++;
+                        }
+                        else if (l[j] == -1) {
+                            point.value = 1;
+                            n++;
+                        }
+                    }
+                }
+                else if (l[l.length - 1] == minmax.max) {
+                    for (let j = 0; j < l.length - 1; j++) {
+                        let point = matrix.points[j];
+                        if (point.value != -1) continue;
+                        if (l[j] == 1) {
+                            point.value = 1;
+                            n++;
+                        }
+                        else if (l[j] == -1) {
+                            point.value = 0;
+                            n++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** @returns {Matrix}
+     *  @param {Field} field 
+     * */
+    function getMatrix(field) {
+        /** @type {{points: Point[], matrix: number[]}} */
+        let result = { points: [], matrix: [] };
+        let inner = innerBorder(field);
+        for (let point of inner) {
+            if (point == null) continue;
+            if (field.spots[point.y][point.x].state != "open") console.log("inner border failed");
+            let length = getBorderLength(field.border);
+            let line = Array.from({ length: length + 1 }, () => 0);
+            let mines = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0; });
+            let flags = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0; });
+            if (mines - flags == 0) { console.log("mines equals flags in matrixSolve"); } // shouldn't happen
+            around(field, point.x, point.y, (f, c, r) => {
+                if (f.spots[r][c].state != "hidden") return; //This assumes that all hidden spots have at least a 1 around them
+                let i = result.points.findIndex((s) => { return s.x == c && s.y == r; });
+                if (i == -1) {
+                    i = result.points.length;
+                    result.points.push({ x: c, y: r, value: -1 });
+                }
+                line[i] = 1;
+            });
+            line[length] = mines - flags;
+            result.matrix.push(line);
+        }
+        return result;
+    }
+    matrix = getMatrix(field);
+    rowReduce(matrix.matrix);
+    getPointValues(matrix);
+    let changes = 0;
+    for (let p of matrix.points) {
+        if (p.value == 0) {
+            field.spots[p.y][p.x].state = "open";
+            if (field.spots[p.y][p.x].mine) {
+                console.log("Opened mine");
+                printPoint(matrix, p.x, p.y);
+            }
+            changes++;
+        }
+        else if (p.value == 1) {
+            field.spots[p.y][p.x].state = "flagged";
+            if (!field.spots[p.y][p.x].mine) {
+                console.log("Flagged empty");
+                printPoint(matrix, p.x, p.y);
+            }
+            changes++;
+        }
+    }
+    return changes;
+}
+
+/** @returns {number}
+ *  @param {Field} field 
+ * */
+function simpleSolve(field) {
     function clearSpots(fi, inn) {
         let opened = 0;
         for (let i of inn) {
-            let mines = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0 });
-            let flags = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0 });
+            if (i == null) continue;
+            let mines = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0; });
+            let flags = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0; });
 
             if (mines == flags) {
                 opened += around(fi, i.x, i.y, (f, c, r) => {
@@ -578,9 +854,10 @@ function solveOnce(field, border) {
     }
     function flagSpots(fi, inn) {
         for (let i of inn) {
-            let mines = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0 });
-            let flags = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0 });
-            let hidden = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].state == "hidden" ? 1 : 0 });
+            if (i == null) continue;
+            let mines = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0; });
+            let flags = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0; });
+            let hidden = around(fi, i.x, i.y, (f, c, r) => { return f.spots[r][c].state == "hidden" ? 1 : 0; });
 
             if (mines - flags == hidden) {
                 around(fi, i.x, i.y, (f, c, r) => {
@@ -591,16 +868,18 @@ function solveOnce(field, border) {
             }
         }
     }
-    let inner = innerBorder(field, border);
+    let inner = innerBorder(field);
     let opened = 1;
     while (opened > 0) {
         opened = clearSpots(field, inner);
         flagSpots(field, inner);
     }
+    let changes = updateBorder(field);
 
-    let changes = updateBorder(field, border);
     return changes;
 }
+
+let matrix = undefined;
 
 /**
  *  @param {Field} field 
@@ -609,20 +888,33 @@ function solveOnce(field, border) {
  *  @param {number} p 
  * */
 function makeSolvableField(field, p, col, row) {
+    function generate(field, prob) {
+        for (let p of field.border) {
+            if (p == null) continue;
+            if (!p.generated) {
+                field.spots[p.y][p.x].mine = rand() < prob;
+                p.generated = true;
+            }
+        }
+    }
     field.spots[row][col].state = "open";
     around(field, col, row, (f, c, r) => {
         f.spots[r][c].state = "open";
     });
-    let border = getBorder(field);
-    let changes = 1;
-    while (changes > 0) {
-        for (let s of border) {
-            if (!s.generated) {
-                field.spots[s.y][s.x].mine = Math.random() < p;
-                s.generated = true;
-            }
+    getInitialBorder(field);
+    let n = 1;
+    while (n > 0) {
+        let changes = 1;
+        while (changes > 0) {
+            generate(field, p);
+            changes = simpleSolve(field);
         }
-        changes = solveOnce(field, border);
+        if (debug) {
+            drawGrid(UI.ctx, UI.grid);
+            drawField(UI);
+        }
+        n = matrixSolve(field);
+        updateBorder(field);
     }
 }
 
