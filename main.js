@@ -14,8 +14,9 @@
  * */
 let UI = undefined;
 
+window.onload = init;
 function init() {
-    let main = document.createElement("div");
+    let main = document.getElementsByClassName('main').item(0);
     main.id = "main";
     document.body.appendChild(main);
     let cvs = document.createElement("canvas");
