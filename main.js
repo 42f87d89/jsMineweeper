@@ -58,6 +58,7 @@ function init() {
             UI.timeoutID = window.setTimeout(() => { UI.recentClick = false; }, clickDelay);
         }
     });
+    cvs.onpointermove = () => { UI.recentClick = false; };
     createUI(cvs, UI, main);
 }
 
@@ -349,7 +350,7 @@ function drawField(ui) {
 let rLogic = [
     { prev: "hidden", next: "open", action: "expand" },
     { prev: "flagged", next: "open", action: "expand" },
-    { prev: "open", next: "open", action: "expand" }];
+    { prev: "open", next: "open", action: "flagAll" }];
 /** @type {Logic}
  * */
 let lLogic = [
@@ -411,6 +412,28 @@ function expand(field, col, row) {
 }
 
 /**
+ * @param {Field} field 
+ * @param {number} col 
+ * @param {number} row 
+ * */
+function flagAll(field, col, row) {
+    let mines = around(field, col, row, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0 });
+    let hidds = around(field, col, row, (f, c, r) => { return f.spots[r][c].state == "hidden" ? 1 : 0 });
+    let flags = around(field, col, row, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0 });
+    if (mines == (flags + hidds)) {
+        around(field, col, row, (f, c, r) => {
+            let sp = f.spots[r][c];
+            if (sp.state == "hidden") {
+                sp.state = "flagged";
+                return 1;
+            } else {
+                return 0;
+            }
+        });
+    }
+}
+
+/**
  *  @param {MouseEvent} e 
  *  @param {HTMLCanvasElement} cvs 
  *  @param {boolean} dblClick 
@@ -444,6 +467,8 @@ function onClick(e, cvs, ui) {
             pop(ui, 0.0);
         }
         expand(grid.field, col, row);
+    } else if (action == "flagAll") {
+        flagAll(grid.field, col, row);
     }
     drawField(ui)
     cascade(ui, 0.0);
