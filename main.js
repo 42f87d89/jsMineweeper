@@ -12,12 +12,15 @@
  *  @property {AudioBuffer} pop
  *  @property {boolean} mute
  *  @property {Grid} grid
+ *  @property {boolean} recentClick
+ *  @property {number} timeoutID
  * */
 
 /** @type {UI}
  * */
 let UI = undefined;
-let debug = true;
+let debug = false;
+let clickDelay = 400;
 
 window.onload = init;
 function init() {
@@ -38,15 +41,23 @@ function init() {
         audioCtx: undefined,
         pop: undefined,
         mute: false,
-        grid: undefined
+        grid: undefined,
+        recentClick: false,
+        timeoutID: undefined,
     };
-
-    let dblClick = { value: false };
     cvs.oncontextmenu = () => { return false; };
-    cvs.addEventListener("mousedown", (e) => { if (e.button == 2) { e.preventDefault(); return false; } });
-    cvs.addEventListener("mouseup", (e) => { onClick(e, cvs, false, UI) });
-    cvs.addEventListener("dblclick", (e) => { onDoubleClick(e, cvs, true, UI) });
-
+    cvs.addEventListener("pointerdown", (e) => { if (e.button == 2) { e.preventDefault(); return false; } });
+    cvs.addEventListener("pointerup", (e) => {
+        if (UI.recentClick) {
+            onClick(e, cvs, UI);
+            UI.recentClick = false;
+            window.clearTimeout(UI.timeoutID);
+        } else {
+            onClick(e, cvs, UI);
+            UI.recentClick = true;
+            UI.timeoutID = window.setTimeout(() => { UI.recentClick = false; }, clickDelay);
+        }
+    });
     createUI(cvs, UI, main);
 }
 
@@ -337,6 +348,7 @@ function drawField(ui) {
  * */
 let rLogic = [
     { prev: "hidden", next: "open", action: "expand" },
+    { prev: "flagged", next: "open", action: "expand" },
     { prev: "open", next: "open", action: "expand" }];
 /** @type {Logic}
  * */
@@ -404,7 +416,7 @@ function expand(field, col, row) {
  *  @param {boolean} dblClick 
  *  @param {UI} ui 
  * */
-function onClick(e, cvs, dblClick, ui) {
+function onClick(e, cvs, ui) {
     let grid = ui.grid;
     let r = cvs.getBoundingClientRect();
     let x = e.clientX - r.x;
@@ -418,7 +430,7 @@ function onClick(e, cvs, dblClick, ui) {
         return;
     }
     let logic = lLogic;
-    if (e.button == 2 || (e.button == 0 && dblClick)) {
+    if (e.button == 2 || (e.button == 0 && ui.recentClick)) {
         if (grid.field.empty) {
             grid.field = randomiseField(grid.field, ui.grid.field.probability, col, row);
         }
@@ -472,16 +484,6 @@ function cascade(ui, pitch) {
     if (dontMatch) {
         setTimeout(() => cascade(ui, Math.min(pitch + 1, 7)), 50);
     }
-}
-
-/**
- *  @param {MouseEvent} e 
- *  @param {HTMLCanvasElement} cvs 
- *  @param {boolean} dblClick 
- *  @param {UI} ui 
- * */
-function onDoubleClick(e, cvs, dblClick, ui) {
-    onClick(e, cvs, dblClick, ui);
 }
 
 /**
@@ -569,54 +571,10 @@ function getInitialBorder(field) {
  * */
 function updateBorder(field) {
     let changes = 0;
-    let newBorder = [];
-    let i = -1;
-    let p = field.border[field.border.length - 1];
-    let prevState = field.spots[p.y][p.x].state;
-    for (let j = 0; j < field.border.length; j++) {
-        let x = field.border[j].x;
-        if (!(x == 0 && x == field.spots[0].length - 1)) continue;
-        let y = field.border[j].y;
-        if (!(y == 0 && y == field.spots.length - 1)) continue;
-        if (newBorder.findIndex((e) => { return e.x == x && e.y == y }) != -1) continue;
-        let state = field.spots[y][x].state;
-        if (state == "hidden" && prevState != "hidden") {
-            i = j;
-            continue;
-        }
-        prevState = state;
-    }
-    if (i == -1) {
-
-    }
-    for (; i < field.border.length; i++) {
+    for (let i = 0; i < field.border.length; i++) {
         let p = field.border[i];
-        if (field.spots[p.y][p.x].state == "hidden") {
-            newBorder.push(p);
-            continue;
-        }
-        let toAdd = [];
-        around(field, p.x, p.y, (f, c, r) => {
-            if (f.spots[r][c].state == "hidden") toAdd.push({ x: c, y: r, value: -1, generated: false });
-        });
-        let prev = p;
-        for (let j = 0; j < toAdd.length; j++) {
-            let next = toAdd.findIndex((x) => {
-                if (x == null) return false;
-                return Math.abs(prev.x - x.x) + Math.abs(prev.y - x.y) == 1;
-            });
-            if (next == -1) {
-                console.log("updateBorder couldn't find next");
-                break;
-            }
-            if (newBorder.find((x) => { return x.x == toAdd[next].x && x.y == toAdd[next].y; }) == undefined) {
-                newBorder.push(toAdd[next]);
-                changes++;
-            }
-            prev = toAdd[next];
-            toAdd[next] = null;
-        }
-        /*if (field.spots[p.y][p.x].state != "hidden") {
+        if (p == null) continue;
+        if (field.spots[p.y][p.x].state != "hidden") {
             field.border[i] = null;
             changes++;
         }
@@ -625,10 +583,9 @@ function updateBorder(field) {
                 if (f.spots[r][c].state == "hidden") return addToBorder(f.border, c, r);
                 else return 0;
             });
-        }*/
+        }
     }
     //sortBorder(field);
-    field.border = newBorder;
     return changes;
 }
 
