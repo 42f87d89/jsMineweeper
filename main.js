@@ -719,35 +719,6 @@ function getMatrix(field) {
  *  @param {Field} field 
  * */
 function matrixSolve(field) {
-    /** @returns {Matrix}
-     *  @param {Field} field 
-     * */
-    function getMatrix(field) {
-        /** @type {{points: Point[], matrix: number[]}} */
-        let result = { points: [], matrix: [] };
-        let inner = innerBorder(field);
-        for (let point of inner) {
-            if (point == null) continue;
-            if (field.spots[point.y][point.x].state != "open") console.log("inner border failed");
-            let length = getBorderLength(field.border);
-            let line = Array.from({ length: length + 1 }, () => 0);
-            let mines = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0; });
-            let flags = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0; });
-            if (mines - flags == 0) { console.log("mines equals flags in matrixSolve"); } // shouldn't happen
-            around(field, point.x, point.y, (f, c, r) => {
-                if (f.spots[r][c].state != "hidden") return; //This assumes that all hidden spots have at least a 1 around them
-                let i = result.points.findIndex((s) => { return s.x == c && s.y == r; });
-                if (i == -1) {
-                    i = result.points.length;
-                    result.points.push({ x: c, y: r, value: -1 });
-                }
-                line[i] = 1;
-            });
-            line[length] = mines - flags;
-            result.matrix.push(line);
-        }
-        return result;
-    }
     matrix = getMatrix(field);
     rowReduce(matrix.matrix);
     getPointValues(matrix);
