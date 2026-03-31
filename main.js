@@ -685,106 +685,40 @@ function printMatrix(matrix) {
     }
 }
 
+/** @returns {Matrix}
+ *  @param {Field} field 
+ * */
+function getMatrix(field) {
+    /** @type {{points: Point[], matrix: number[]}} */
+    let result = { points: [], matrix: [] };
+    let inner = innerBorder(field);
+    for (let point of inner) {
+        if (point == null) continue;
+        if (field.spots[point.y][point.x].state != "open") console.log("inner border failed");
+        let length = getBorderLength(field.border);
+        let line = Array.from({ length: length + 1 }, () => 0);
+        let mines = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0; });
+        let flags = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0; });
+        if (mines - flags == 0) { console.log("mines equals flags in matrixSolve"); } // shouldn't happen
+        around(field, point.x, point.y, (f, c, r) => {
+            if (f.spots[r][c].state != "hidden") return; //This assumes that all hidden spots have at least a 1 around them
+            let i = result.points.findIndex((s) => { return s.x == c && s.y == r; });
+            if (i == -1) {
+                i = result.points.length;
+                result.points.push({ x: c, y: r, value: -1 });
+            }
+            line[i] = 1;
+        });
+        line[length] = mines - flags;
+        result.matrix.push(line);
+    }
+    return result;
+}
+
 /** @returns {number}
  *  @param {Field} field 
  * */
 function matrixSolve(field) {
-    /** @returns {{min: number, max: number}}
-     *  @param {Matrix} matrix 
-     * */
-    function getMinMax(matrix, n) {
-        let line = matrix.matrix[n];
-        let minmax = { min: 0, max: 0 };
-        for (let i = 0; i < line.length - 1; i++) {
-            let coef = line[i]
-            let value = matrix.points[i].value;
-            if (coef == 1 && value != 0) {
-                minmax.max++;
-            }
-            else if (coef == 1 && value == 1) {
-                minmax.min++;
-            }
-            else if (coef == -1 && value == 1) {
-                minmax.max--;
-            }
-            else if (coef == -1 && value != 0) {
-                minmax.min--;
-            }
-        }
-        return minmax;
-    }
-
-    /**
-     *  @param {Matrix} matrix 
-     * */
-    function getPointValues(matrix) {
-        let n = 1;
-        while (n > 0) {
-            n = 0;
-            for (let i = 0; i < matrix.matrix.length; i++) {
-                let l = matrix.matrix[i];
-                let minmax = getMinMax(matrix, i);
-                if (l[l.length - 1] == minmax.min) {
-                    for (let j = 0; j < l.length - 1; j++) {
-                        let point = matrix.points[j];
-                        if (point.value != -1) continue;
-                        if (l[j] == 1) {
-                            point.value = 0;
-                            n++;
-                        }
-                        else if (l[j] == -1) {
-                            point.value = 1;
-                            n++;
-                        }
-                    }
-                }
-                else if (l[l.length - 1] == minmax.max) {
-                    for (let j = 0; j < l.length - 1; j++) {
-                        let point = matrix.points[j];
-                        if (point.value != -1) continue;
-                        if (l[j] == 1) {
-                            point.value = 1;
-                            n++;
-                        }
-                        else if (l[j] == -1) {
-                            point.value = 0;
-                            n++;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /** @returns {Matrix}
-     *  @param {Field} field 
-     * */
-    function getMatrix(field) {
-        /** @type {{points: Point[], matrix: number[]}} */
-        let result = { points: [], matrix: [] };
-        let inner = innerBorder(field);
-        for (let point of inner) {
-            if (point == null) continue;
-            if (field.spots[point.y][point.x].state != "open") console.log("inner border failed");
-            let length = getBorderLength(field.border);
-            let line = Array.from({ length: length + 1 }, () => 0);
-            let mines = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].mine ? 1 : 0; });
-            let flags = around(field, point.x, point.y, (f, c, r) => { return f.spots[r][c].state == "flagged" ? 1 : 0; });
-            if (mines - flags == 0) { console.log("mines equals flags in matrixSolve"); } // shouldn't happen
-            around(field, point.x, point.y, (f, c, r) => {
-                if (f.spots[r][c].state != "hidden") return; //This assumes that all hidden spots have at least a 1 around them
-                let i = result.points.findIndex((s) => { return s.x == c && s.y == r; });
-                if (i == -1) {
-                    i = result.points.length;
-                    result.points.push({ x: c, y: r, value: -1 });
-                }
-                line[i] = 1;
-            });
-            line[length] = mines - flags;
-            result.matrix.push(line);
-        }
-        return result;
-    }
     matrix = getMatrix(field);
     rowReduce(matrix.matrix);
     getPointValues(matrix);
