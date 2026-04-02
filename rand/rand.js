@@ -27,7 +27,7 @@ function splitmix32(a) {
   }
 }
 // Create cyrb128 state:
-var seed = cyrb128("apples");
+var seed = cyrb128(Date());
 
 // Or... only one 32-bit component hash is needed for splitmix32.
 var rand = splitmix32(seed[0]);
